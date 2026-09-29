@@ -1,0 +1,260 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mapa de las UGEL del Perú</title>
+<meta name="description" content="226 polígonos GeoJSON de jurisdicción UGEL del Perú, con las instituciones educativas de cada una según ESCALE. Datos abiertos y reproducibles.">
+<meta name="keywords" content="UGEL, GeoJSON, Perú, mapa, shapefile UGEL, ESCALE, MINEDU, datos abiertos, educación">
+<meta property="og:type" content="website">
+<meta property="og:locale" content="es_PE">
+<meta property="og:title" content="Mapa de las UGEL del Perú">
+<meta property="og:description" content="226 polígonos GeoJSON de jurisdicción educativa, derivados de datos públicos del INEI y ESCALE.">
+<meta property="og:image" content="https://swamperu.github.io/peru-ugel-geojson/assets/og.png">
+<meta property="og:url" content="https://swamperu.github.io/peru-ugel-geojson/">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="stylesheet" href="./src/peru-map.css">
+<style>
+  body { margin:0; padding:26px 20px; font-family:"Segoe UI", system-ui, sans-serif; background:#f6f8f9; color:#1f2b33; }
+  .panel { max-width:1040px; margin:0 auto; background:#fff; border:1px solid #e2e8ec; border-radius:10px; padding:22px 26px 26px; }
+  h1 { font-size:19px; margin:0; font-weight:600; }
+  .sub { font-size:13px; color:#6b7c86; margin:3px 0 18px; }
+  .barra { display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin-bottom:16px; }
+  select, button { font:inherit; font-size:13px; padding:6px 10px; border:1px solid #cfd9df; border-radius:6px; background:#fff; color:inherit; }
+  button { cursor:pointer; }
+  button:hover:not(:disabled) { border-color:#42a09d; }
+  button:disabled { opacity:.45; cursor:default; }
+  .grid { display:grid; grid-template-columns:1.3fr 1fr; gap:26px; align-items:start; }
+  @media (max-width:820px) { .grid { grid-template-columns:1fr; } }
+  table { width:100%; border-collapse:collapse; font-size:13px; }
+  th,td { text-align:left; padding:5px 8px; border-bottom:1px solid #eef2f4; }
+  th { font-size:11.5px; color:#6b7c86; font-weight:600; }
+  td.num { text-align:right; font-variant-numeric:tabular-nums; }
+  tbody tr { cursor:pointer; }
+  tbody tr:hover { background:#f4f8f8; }
+  tr.activa { background:#e2f0ef; }
+  .tabla-wrap { max-height:560px; overflow:auto; }
+  .chk { font-size:13px; color:#4a5a64; display:inline-flex; align-items:center; gap:5px; cursor:pointer; }
+  .estado { font-size:12.5px; color:#6b7c86; }
+  .estado.error { color:#a8322d; }
+
+  /* Aviso: visible sin estorbar, y expandible para quien necesite el detalle. */
+  .aviso { border:1px solid #e8dcc0; background:#fdf9f0; border-radius:8px; margin:0 0 18px; font-size:13px; }
+  .aviso > summary { padding:10px 14px; cursor:pointer; color:#7a5c1e; list-style:none; display:flex; gap:8px; align-items:baseline; }
+  .aviso > summary::-webkit-details-marker { display:none; }
+  .aviso > summary::after { content:"Ver detalle"; margin-left:auto; font-size:12px; color:#a07c2e; text-decoration:underline; }
+  .aviso[open] > summary::after { content:"Ocultar"; }
+  .aviso .cuerpo { padding:0 14px 14px; color:#584a30; line-height:1.55; border-top:1px solid #f0e6d0; margin-top:2px; padding-top:12px; }
+  .aviso .cuerpo p { margin:0 0 9px; }
+  .aviso .cuerpo strong { color:#3d3320; }
+  .pie { max-width:1040px; margin:14px auto 0; font-size:12px; color:#7d8b94; line-height:1.6; }
+  .pie a { color:#42807d; }
+</style>
+</head>
+<body>
+<div class="panel">
+  <h1 id="titulo">Instituciones educativas por región</h1>
+  <p class="sub" id="subtitulo">Colegios de EBR según ESCALE · clic en una región para abrir sus UGEL</p>
+
+  <details class="aviso">
+    <summary>Los límites de UGEL son aproximados y no son oficiales.</summary>
+    <div class="cuerpo">
+      <p>El Estado publica qué UGEL administra cada colegio, pero <strong>no publica los
+      límites geográficos de cada UGEL</strong>. Estos polígonos se construyen agrupando los
+      distritos que cada UGEL administra, deducidos de dónde están sus colegios.</p>
+
+      <p>Hay distritos donde conviven colegios de dos UGEL. Como un distrito no se puede
+      partir, el distrito entero va a la UGEL con más colegios ahí. Medido sobre 16 540
+      colegios: <strong>92,8 % cae dentro del polígono de su propia UGEL</strong> y 7,2 % no.
+      Son 96 distritos repartidos, sobre todo en selva central y Loreto.</p>
+
+      <p>Los límites distritales de base son los censales del INEI, que son
+      <strong>referenciales, no demarcatorios</strong>.</p>
+
+      <p>Esto sirve para visualizar y analizar. <strong>No determina a qué UGEL pertenece una
+      institución educativa</strong> ni sustenta trámites o actos administrativos: para eso,
+      el padrón de ESCALE o la UGEL correspondiente.</p>
+    </div>
+  </details>
+
+  <div class="barra">
+    <select id="metrica">
+      <option value="total">Colegios (total)</option>
+      <option value="inicial">Inicial</option>
+      <option value="primaria">Primaria</option>
+      <option value="secundaria">Secundaria</option>
+      <option value="rural">Rurales</option>
+      <option value="pct_rural">% rural</option>
+    </select>
+    <select id="region"><option value="">Todo el Perú</option></select>
+    <button id="verUgel">Ver todas las UGEL</button>
+    <label class="chk"><input type="checkbox" id="nombres" checked> Nombres</label>
+    <button id="volver" disabled>← Regiones</button>
+    <a href="probar.html" style="font-size:13px;color:#2d817e;margin-left:auto;align-self:center">Probar con mis datos →</a>
+    <span class="estado" id="estado"></span>
+  </div>
+
+  <div class="grid">
+    <div id="mapa" style="height:560px"></div>
+    <div class="tabla-wrap">
+      <table>
+        <thead><tr><th id="thNombre">Región</th><th class="num" id="thValor">Colegios</th></tr></thead>
+        <tbody id="tabla"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<footer class="pie">
+  Datos: límites censales del <a href="https://ide.inei.gob.pe/" target="_blank" rel="noopener">INEI</a>
+  (referenciales, no demarcatorios) e instituciones educativas de
+  <a href="https://escale.minedu.gob.pe/" target="_blank" rel="noopener">ESCALE – MINEDU</a>.
+  Proyecto independiente, sin vínculo con el MINEDU ni ninguna entidad del Estado ·
+  <a href="https://github.com/swamperu/peru-ugel-geojson" target="_blank" rel="noopener">código y datos en GitHub</a> ·
+  hecho por <a href="https://www.swamperu.com" target="_blank" rel="noopener">swamperu.com</a>
+</footer>
+
+<script type="module">
+import { PeruMap } from './src/peru-map.js';
+
+const ETIQUETAS = { total: 'Colegios', inicial: 'Inicial', primaria: 'Primaria',
+                    secundaria: 'Secundaria', rural: 'Colegios rurales', pct_rural: '% rural' };
+const $ = (id) => document.getElementById(id);
+const estado = $('estado'), titulo = $('titulo'), subtitulo = $('subtitulo');
+const thNombre = $('thNombre'), thValor = $('thValor'), tabla = $('tabla');
+const selMetrica = $('metrica');
+const btnVolver = $('volver'), btnVerUgel = $('verUgel'), chkNombres = $('nombres');
+const selRegion = $('region');
+
+/* ── Geometría ────────────────────────────────────────────────────────── */
+const geo = {};
+try {
+  estado.textContent = 'Cargando geometría…';
+  [geo.regiones, geo.ugel] = await Promise.all([
+    fetch('./data/peru-regiones.json').then(r => r.json()),
+    fetch('./data/peru-ugel.json').then(r => r.json()),
+  ]);
+  estado.textContent = '';
+} catch (e) {
+  estado.className = 'estado error';
+  estado.textContent = 'No pude leer data/peru-regiones.json o data/peru-ugel.json';
+  throw e;
+}
+
+/* ── Datos: ESCALE, instituciones educativas de EBR por UGEL ──────────── */
+const escale = await fetch('./data/escale-colegios.json').then(r => r.json());
+
+const conDerivadas = (id, nombre, a, extra = {}) => ({
+  id, nombre,
+  total: a.total, inicial: a.inicial || 0, primaria: a.primaria || 0,
+  secundaria: a.secundaria || 0, rural: a.rural || 0, urbana: a.urbana || 0,
+  pct_rural: a.total ? +(100 * (a.rural || 0) / a.total).toFixed(1) : 0,
+  ...extra,
+});
+
+const datos = {
+  regiones: geo.regiones.features
+    .filter(f => escale.region[f.properties.codigo])
+    .map(f => conDerivadas(f.properties.codigo, f.properties.nombre, escale.region[f.properties.codigo])),
+  ugel: Object.entries(escale.ugel)
+    .map(([cod, a]) => conDerivadas(cod, a.nombre, a, { geometria: a.geometria, dre: a.dre })),
+};
+
+/* ── Mapa ─────────────────────────────────────────────────────────────── */
+selRegion.insertAdjacentHTML('beforeend', geo.regiones.features
+  .map(f => f.properties)
+  .sort((a, b) => a.nombre.localeCompare(b.nombre, 'es'))
+  .map(p => `<option value="${p.codigo}">${p.nombre}</option>`).join(''));
+
+let nivel = 'regiones', filas = datos.regiones, metrica = 'total';
+
+const mapa = new PeruMap('#mapa', {
+  paleta: 'teal',
+  tituloLeyenda: 'Plazas',
+  etiquetas: 'auto',        // aparecen al acercar y nunca se enciman
+  tamanoEtiqueta: 10,
+  tooltip: (f, valor, fila) => {
+    if (!fila) return `<strong>${f.nombre}</strong><span>Jurisdicción UGEL sin resolver</span>`;
+    const u = fila.urbana.toLocaleString('es-PE'), r = fila.rural.toLocaleString('es-PE');
+    return `<strong>${fila.nombre}</strong>
+      <span>${ETIQUETAS[metrica]}: <b>${valor.toLocaleString('es-PE')}</b></span>
+      <span>Total <b>${fila.total.toLocaleString('es-PE')}</b> · ${fila.inicial} inicial · ${fila.primaria} primaria · ${fila.secundaria} secundaria</span>
+      <span>Urbanos <b>${u}</b> · rurales <b>${r}</b></span>
+      ${fila.geometria === 'provincia-revisar' ? '<span>⚠ polígono incluye zona de otra UGEL</span>' : ''}`;
+  },
+  onClick: (id) => { if (nivel === 'regiones') ver('ugel', id); },
+  onSeleccion: (ids) => marcarFila(ids[0]),
+});
+
+await ver('regiones');
+
+/* ── Navegación ───────────────────────────────────────────────────────── */
+async function ver(destino, codigoRegion = null) {
+  nivel = destino;
+  selRegion.value = codigoRegion ?? '';
+
+  if (destino === 'regiones') {
+    await mapa.cargarGeografia(geo.regiones, { campoId: 'codigo', campoNombre: 'nombre' });
+    await mapa.setContorno(null);
+    filas = datos.regiones;
+    titulo.textContent = 'Instituciones educativas por región';
+    subtitulo.textContent = 'Colegios de EBR según ESCALE · clic en una región para abrir sus UGEL';
+    thNombre.textContent = 'Región';
+  } else {
+    const feats = codigoRegion
+      ? geo.ugel.features.filter(f => f.properties.region === codigoRegion)
+      : geo.ugel.features;
+    await mapa.cargarGeografia({ type: 'FeatureCollection', features: feats },
+                               { campoId: 'codigo', campoNombre: 'nombre' });
+    // Contorno: solo la región abierta, o las 25 si se ven todas las UGEL.
+    await mapa.setContorno({
+      type: 'FeatureCollection',
+      features: codigoRegion
+        ? geo.regiones.features.filter(f => f.properties.codigo === codigoRegion)
+        : geo.regiones.features,
+    });
+    const codigos = new Set(feats.map(f => f.properties.codigo));
+    filas = datos.ugel.filter(d => codigos.has(d.id));
+    const nombreRegion = codigoRegion
+      ? geo.regiones.features.find(f => f.properties.codigo === codigoRegion)?.properties.nombre
+      : null;
+    const conDato = feats.filter(f => !f.properties.pendiente).length;
+    titulo.textContent = nombreRegion ? `UGEL de ${nombreRegion}` : 'Instituciones educativas por UGEL';
+    subtitulo.textContent = `${conDato} UGEL con dato` +
+      (feats.length > conDato ? ` · ${feats.length - conDato} zona(s) con jurisdicción sin resolver` : '') +
+      ' · rueda del mouse para acercar';
+    thNombre.textContent = 'UGEL';
+  }
+
+  btnVolver.disabled = destino === 'regiones';
+  refrescar();
+}
+
+function refrescar() {
+  mapa.setOpciones({ tituloLeyenda: ETIQUETAS[metrica] });
+  mapa.setDatos(filas, { campoId: 'id', campoValor: metrica });
+  thValor.textContent = ETIQUETAS[metrica];
+  tabla.innerHTML = filas
+    .slice().sort((a, b) => b[metrica] - a[metrica])
+    .map(f => `<tr data-id="${f.id}"><td>${f.nombre}</td><td class="num">${f[metrica].toLocaleString('es-PE')}</td></tr>`)
+    .join('');
+}
+
+btnVerUgel.addEventListener('click', () => ver('ugel', selRegion.value || null));
+selRegion.addEventListener('change', e => ver(e.target.value ? 'ugel' : 'regiones', e.target.value || null));
+btnVolver.addEventListener('click', () => ver('regiones'));
+selMetrica.addEventListener('change', e => { metrica = e.target.value; refrescar(); });
+chkNombres.addEventListener('change', e => mapa.setOpciones({ etiquetas: e.target.checked ? 'auto' : false }));
+tabla.addEventListener('click', e => {
+  const tr = e.target.closest('tr[data-id]');
+  if (!tr) return;
+  mapa.seleccionar(tr.dataset.id);
+  mapa.zoomA(tr.dataset.id);
+});
+
+function marcarFila(id) {
+  for (const tr of tabla.querySelectorAll('tr')) tr.classList.toggle('activa', tr.dataset.id === id);
+}
+</script>
+</body>
+</html>

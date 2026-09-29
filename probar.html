@@ -1,0 +1,398 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Probar el mapa con mis datos</title>
+<meta name="description" content="Arrastra tu Excel o CSV y míralo en el mapa de las UGEL del Perú. Sin instalar nada: el archivo no sale de tu navegador.">
+<link rel="stylesheet" href="./src/peru-map.css">
+<style>
+  body { margin:0; padding:26px 20px 40px; font-family:"Segoe UI", system-ui, sans-serif; background:#f6f8f9; color:#1f2b33; }
+  .panel { max-width:1040px; margin:0 auto; background:#fff; border:1px solid #e2e8ec; border-radius:10px; padding:24px 26px 28px; }
+  h1 { font-size:21px; margin:0 0 4px; font-weight:600; }
+  .sub { font-size:13.5px; color:#6b7c86; margin:0 0 22px; line-height:1.55; }
+  .sub a { color:#2d817e; }
+
+  /* Zona de carga: el punto de entrada, y lo único visible al abrir la página. */
+  .soltar { border:2px dashed #b9cdd3; border-radius:10px; background:#fbfdfd; padding:38px 24px;
+            text-align:center; cursor:pointer; transition:border-color .18s, background .18s; }
+  .soltar:hover, .soltar.encima { border-color:#42a09d; background:#f0f8f7; }
+  .soltar h2 { font-size:16px; margin:0 0 6px; font-weight:600; color:#24363f; }
+  .soltar p { font-size:13px; color:#72858f; margin:0; line-height:1.6; }
+  .soltar input { display:none; }
+  .privado { font-size:12px; color:#8a9aa3; margin-top:22px; text-align:center; }
+
+  .oculto { display:none; }
+  .config { display:flex; flex-wrap:wrap; gap:14px 18px; align-items:flex-end; padding:16px 0 4px; border-bottom:1px solid #eef2f4; margin-bottom:16px; }
+  .campo { display:flex; flex-direction:column; gap:4px; }
+  .campo label { font-size:11.5px; color:#6b7c86; font-weight:600; }
+  select, button { font:inherit; font-size:13px; padding:6px 10px; border:1px solid #cfd9df; border-radius:6px; background:#fff; color:inherit; }
+  button { cursor:pointer; }
+  button:hover { border-color:#42a09d; }
+  button.link { border:none; background:none; color:#2d817e; text-decoration:underline; padding:0; font-size:12.5px; }
+
+  .cruce { font-size:13px; padding:10px 13px; border-radius:7px; margin-bottom:16px; line-height:1.6; }
+  .cruce.ok { background:#eef7f6; border:1px solid #cfe6e4; color:#1f5b58; }
+  .cruce.alerta { background:#fdf6e8; border:1px solid #f0e0bd; color:#7a5c1e; }
+  .cruce.mal { background:#fdeeed; border:1px solid #f2ccc9; color:#8f2f2a; }
+  .cruce b { font-variant-numeric:tabular-nums; }
+  .cruce ul { margin:7px 0 0; padding-left:20px; }
+  .cruce li { margin:2px 0; }
+
+  .grid { display:grid; grid-template-columns:1.3fr 1fr; gap:26px; align-items:start; }
+  @media (max-width:820px) { .grid { grid-template-columns:1fr; } }
+  table { width:100%; border-collapse:collapse; font-size:13px; }
+  th,td { text-align:left; padding:5px 8px; border-bottom:1px solid #eef2f4; }
+  th { font-size:11.5px; color:#6b7c86; font-weight:600; }
+  td.num { text-align:right; font-variant-numeric:tabular-nums; }
+  .tabla-wrap { max-height:540px; overflow:auto; }
+  .pie { max-width:1040px; margin:14px auto 0; font-size:12px; color:#7d8b94; line-height:1.6; }
+  .pie a { color:#42807d; }
+</style>
+</head>
+<body>
+<div class="panel">
+  <h1>Probar el mapa con mis datos</h1>
+  <p class="sub">
+    Arrastra tu Excel o CSV y míralo pintado sobre las 226 UGEL del Perú. No necesitas
+    programar nada.<br>
+    ¿No tienes el archivo armado? Descarga la plantilla con los 226 códigos y pega tus cifras
+    en la columna <strong>VALOR</strong>:
+    <a href="plantilla-ugel.xlsx" download>Excel</a> ·
+    <a href="plantilla-ugel.csv" download>CSV de UGEL</a> ·
+    <a href="plantilla-regiones.csv" download>CSV de regiones</a>
+  </p>
+
+  <div id="zona">
+    <label class="soltar" id="soltar">
+      <input type="file" id="archivo" accept=".xlsx,.xls,.csv,.txt">
+      <h2>Suelta aquí tu archivo</h2>
+      <p>Excel (.xlsx) o CSV · o haz clic para elegirlo</p>
+    </label>
+    <p class="privado">El archivo se procesa en tu navegador. No se sube a ningún servidor.</p>
+  </div>
+
+  <div id="trabajo" class="oculto">
+    <div class="config">
+      <div class="campo">
+        <label for="nivel">Nivel</label>
+        <select id="nivel">
+          <option value="ugel">UGEL</option>
+          <option value="region">Región</option>
+        </select>
+      </div>
+      <div class="campo">
+        <label for="colId">Columna que identifica la UGEL</label>
+        <select id="colId"></select>
+      </div>
+      <div class="campo">
+        <label for="colValor">Columna con el valor a pintar</label>
+        <select id="colValor"></select>
+      </div>
+      <div class="campo">
+        <label for="paleta">Colores</label>
+        <select id="paleta">
+          <option value="teal">Verde azulado</option>
+          <option value="indigo">Índigo</option>
+          <option value="ambar">Ámbar</option>
+          <option value="brecha">Divergente (para brechas)</option>
+        </select>
+      </div>
+      <button id="otro" class="link">Usar otro archivo</button>
+    </div>
+
+    <div id="cruce" class="cruce"></div>
+
+    <div class="grid">
+      <div id="mapa" style="height:560px"></div>
+      <div class="tabla-wrap">
+        <table>
+          <thead><tr><th id="thNombre">UGEL</th><th class="num" id="thValor">Valor</th></tr></thead>
+          <tbody id="tabla"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<footer class="pie">
+  Los polígonos de UGEL son aproximados y no son cartografía oficial:
+  <a href="AVISO.md">lee el aviso</a> antes de publicar resultados ·
+  <a href="index.html">ver el mapa de referencia</a> ·
+  <a href="https://github.com/swamperu/peru-ugel-geojson" target="_blank" rel="noopener">código y datos</a>
+</footer>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script type="module">
+import { PeruMap } from './src/peru-map.js';
+
+const $ = id => document.getElementById(id);
+
+/* ── Geografía y catálogo ─────────────────────────────────────────────── */
+const [geoUgel, geoReg, escale] = await Promise.all([
+  fetch('data/peru-ugel.json').then(r => r.json()),
+  fetch('data/peru-regiones.json').then(r => r.json()),
+  fetch('data/escale-colegios.json').then(r => r.json()),
+]);
+
+/** Quita tildes, prefijos y numerales para poder cruzar por nombre.
+ *  "UGEL 01 San Juan de Miraflores" y "SAN JUAN DE MIRAFLORES" caen en la misma clave. */
+function clave(s) {
+  return String(s ?? '')
+    .normalize('NFD').replace(/[̀-ͯ]/g, '')
+    .toUpperCase()
+    .replace(/^\s*(UGEL|DRE|DIRECCION REGIONAL DE EDUCACION)\s+/, '')
+    .replace(/^\s*N?°?\s*\d+\s+/, '')
+    .replace(/[^A-Z0-9 ]/g, ' ')
+    .replace(/\s+/g, ' ').trim();
+}
+
+/** Índices de búsqueda: por código exacto y por nombre normalizado. */
+function indices(nivel) {
+  const porCodigo = new Map(), porNombre = new Map();
+  if (nivel === 'ugel') {
+    for (const [cod, a] of Object.entries(escale.ugel)) {
+      porCodigo.set(cod, { cod, nombre: a.nombre });
+      const k = clave(a.nombre);
+      if (!porNombre.has(k)) porNombre.set(k, { cod, nombre: a.nombre });
+    }
+  } else {
+    for (const f of geoReg.features) {
+      const { codigo, nombre } = f.properties;
+      porCodigo.set(codigo, { cod: codigo, nombre });
+      porNombre.set(clave(nombre), { cod: codigo, nombre });
+    }
+  }
+  return { porCodigo, porNombre };
+}
+
+/* ── Lectura del archivo ──────────────────────────────────────────────── */
+function leerCSV(texto) {
+  // Detecta el separador por la primera línea: ; es lo normal en Excel en español.
+  const linea1 = texto.split(/\r?\n/)[0] ?? '';
+  const sep = [';', '\t', ','].reduce((a, b) =>
+    (linea1.split(b).length > linea1.split(a).length ? b : a), ',');
+  const filas = [];
+  let campo = '', fila = [], comillas = false;
+  for (let i = 0; i < texto.length; i++) {
+    const c = texto[i];
+    if (comillas) {
+      if (c === '"' && texto[i + 1] === '"') { campo += '"'; i++; }
+      else if (c === '"') comillas = false;
+      else campo += c;
+    } else if (c === '"') comillas = true;
+    else if (c === sep) { fila.push(campo); campo = ''; }
+    else if (c === '\n') { fila.push(campo); filas.push(fila); fila = []; campo = ''; }
+    else if (c !== '\r') campo += c;
+  }
+  if (campo || fila.length) { fila.push(campo); filas.push(fila); }
+  return filas.filter(f => f.some(v => String(v).trim() !== ''));
+}
+
+async function leerArchivo(file) {
+  const esExcel = /\.xlsx?$/i.test(file.name);
+  if (!esExcel) {
+    const texto = await file.text();
+    return leerCSV(texto.replace(/^﻿/, ''));
+  }
+  const buf = await file.arrayBuffer();
+  const wb = XLSX.read(buf, { type: 'array' });
+  // Se elige la hoja con más filas: en la plantilla, "UGEL" gana a "Instrucciones".
+  let mejor = null, max = -1;
+  for (const nombre of wb.SheetNames) {
+    const filas = XLSX.utils.sheet_to_json(wb.Sheets[nombre], { header: 1, raw: false, defval: '' });
+    const utiles = filas.filter(f => f.some(v => String(v).trim() !== ''));
+    if (utiles.length > max) { max = utiles.length; mejor = utiles; }
+  }
+  return mejor ?? [];
+}
+
+/* ── Detección de columnas ────────────────────────────────────────────── */
+function detectar(filas, nivel) {
+  const cab = filas[0].map(h => String(h).trim());
+  const cuerpo = filas.slice(1);
+  const { porCodigo, porNombre } = indices(nivel);
+
+  // Columna identificadora: la que más filas logra cruzar, por código o por nombre.
+  let colId = -1, mejorCruce = -1;
+  for (let c = 0; c < cab.length; c++) {
+    let n = 0;
+    for (const f of cuerpo) {
+      const v = String(f[c] ?? '').trim();
+      if (!v) continue;
+      const cod = v.replace(/\D/g, '');
+      const largo = nivel === 'ugel' ? 6 : 2;
+      if (porCodigo.has(cod.padStart(largo, '0'))) n++;
+      else if (porNombre.has(clave(v))) n++;
+    }
+    if (n > mejorCruce) { mejorCruce = n; colId = c; }
+  }
+
+  // Columna de valor: la más numérica que no sea la identificadora.
+  let colValor = -1, mejorNum = -1;
+  for (let c = 0; c < cab.length; c++) {
+    if (c === colId) continue;
+    let n = 0;
+    for (const f of cuerpo) {
+      const v = String(f[c] ?? '').replace(/\s|,/g, '');
+      if (v !== '' && Number.isFinite(Number(v))) n++;
+    }
+    const nombre = cab[c].toUpperCase();
+    if (nombre === 'VALOR') n += cuerpo.length;     // la plantilla la nombra así
+    if (nombre.includes('COLEGIOS')) n -= cuerpo.length / 2;  // columna de referencia
+    if (n > mejorNum) { mejorNum = n; colValor = c; }
+  }
+  return { cab, cuerpo, colId, colValor };
+}
+
+/* ── Estado ───────────────────────────────────────────────────────────── */
+let datos = null, mapa = null, filas = [], nombreArchivo = '';
+
+const mapaOpts = {
+  paleta: 'teal',
+  tooltip: (f, valor, fila) => `<strong>${f.nombre}</strong><span>${
+    valor != null ? new Intl.NumberFormat('es-PE', { maximumFractionDigits: 2 }).format(valor)
+                  : 'Sin dato en tu archivo'}</span>`,
+};
+
+/* ── Flujo ────────────────────────────────────────────────────────────── */
+async function cargar(file) {
+  nombreArchivo = file.name;
+  let crudo;
+  try {
+    crudo = await leerArchivo(file);
+  } catch (e) {
+    alert('No pude leer el archivo. Guárdalo como .xlsx o .csv y vuelve a intentarlo.');
+    return;
+  }
+  if (crudo.length < 2) {
+    alert('El archivo no tiene filas de datos: se esperaba una cabecera y al menos una fila.');
+    return;
+  }
+  datos = crudo;
+
+  // El nivel se decide por cuál cruza mejor, y el usuario puede cambiarlo.
+  const porUgel = detectar(datos, 'ugel'), porReg = detectar(datos, 'region');
+  const nivel = contar(porUgel, 'ugel').ok >= contar(porReg, 'region').ok ? 'ugel' : 'region';
+  $('nivel').value = nivel;
+
+  poblarSelectores(nivel);
+  $('zona').classList.add('oculto');
+  $('trabajo').classList.remove('oculto');
+  await pintar();
+}
+
+function contar(det, nivel) {
+  const { porCodigo, porNombre } = indices(nivel);
+  const largo = nivel === 'ugel' ? 6 : 2;
+  let ok = 0;
+  for (const f of det.cuerpo) {
+    const v = String(f[det.colId] ?? '').trim();
+    if (!v) continue;
+    const cod = v.replace(/\D/g, '').padStart(largo, '0');
+    if (porCodigo.has(cod) || porNombre.has(clave(v))) ok++;
+  }
+  return { ok, total: det.cuerpo.length };
+}
+
+function poblarSelectores(nivel) {
+  const det = detectar(datos, nivel);
+  const opciones = det.cab.map((h, i) =>
+    `<option value="${i}">${h || '(columna ' + (i + 1) + ')'}</option>`).join('');
+  $('colId').innerHTML = opciones; $('colId').value = det.colId;
+  $('colValor').innerHTML = opciones; $('colValor').value = det.colValor;
+}
+
+async function pintar() {
+  const nivel = $('nivel').value;
+  const colId = Number($('colId').value), colValor = Number($('colValor').value);
+  const { porCodigo, porNombre } = indices(nivel);
+  const largo = nivel === 'ugel' ? 6 : 2;
+  const cuerpo = datos.slice(1);
+
+  const porCod = new Map();
+  const sinCruce = [], sinValor = [];
+  let porNombreUsado = 0;
+
+  for (const f of cuerpo) {
+    const bruto = String(f[colId] ?? '').trim();
+    if (!bruto) continue;
+    const soloDig = bruto.replace(/\D/g, '');
+    let hit = soloDig ? porCodigo.get(soloDig.padStart(largo, '0')) : null;
+    if (!hit) { hit = porNombre.get(clave(bruto)); if (hit) porNombreUsado++; }
+    if (!hit) { sinCruce.push(bruto); continue; }
+
+    const v = Number(String(f[colValor] ?? '').replace(/\s|,/g, ''));
+    if (!Number.isFinite(v) || String(f[colValor] ?? '').trim() === '') { sinValor.push(hit.nombre); continue; }
+    porCod.set(hit.cod, { id: hit.cod, nombre: hit.nombre, valor: v });
+  }
+
+  filas = [...porCod.values()];
+
+  // --- reporte de cruce ---
+  const total = cuerpo.filter(f => String(f[colId] ?? '').trim()).length;
+  const universo = nivel === 'ugel' ? 226 : 25;
+  const clase = filas.length === 0 ? 'mal' : (sinCruce.length || sinValor.length) ? 'alerta' : 'ok';
+  const etiqueta = nivel === 'ugel' ? 'UGEL' : 'regiones';
+  let html = `<b>${filas.length}</b> de <b>${universo}</b> ${etiqueta} quedaron pintadas, ` +
+             `a partir de <b>${total}</b> filas de <em>${nombreArchivo}</em>.`;
+  const notas = [];
+  if (porNombreUsado) notas.push(`${porNombreUsado} filas se cruzaron por nombre, no por código.`);
+  if (sinValor.length) notas.push(`${sinValor.length} filas cruzaron pero no traían un número en la columna de valor.`);
+  if (sinCruce.length) {
+    const muestra = [...new Set(sinCruce)].slice(0, 6).join(' · ');
+    notas.push(`${sinCruce.length} filas no se reconocieron: ${muestra}${sinCruce.length > 6 ? ' …' : ''}`);
+  }
+  if (filas.length === 0) {
+    notas.push('Revisa que la columna identificadora sea la correcta. Si tus códigos perdieron ' +
+               'el cero inicial en Excel, el cruce por nombre suele salvarlos.');
+  }
+  if (notas.length) html += '<ul>' + notas.map(n => `<li>${n}</li>`).join('') + '</ul>';
+  $('cruce').className = 'cruce ' + clase;
+  $('cruce').innerHTML = html;
+
+  // --- mapa ---
+  if (!mapa) mapa = new PeruMap('#mapa', mapaOpts);
+  const geo = nivel === 'ugel' ? geoUgel : geoReg;
+  await mapa.cargarGeografia(geo, { campoId: 'codigo', campoNombre: 'nombre' });
+  await mapa.setContorno(nivel === 'ugel' ? geoReg : null);
+  mapa.setOpciones({ paleta: $('paleta').value, tituloLeyenda: datos[0][colValor] || 'Valor' });
+  mapa.setDatos(filas, { campoId: 'id', campoValor: 'valor' });
+
+  // --- tabla ---
+  $('thNombre').textContent = nivel === 'ugel' ? 'UGEL' : 'Región';
+  $('thValor').textContent = datos[0][colValor] || 'Valor';
+  const fmt = new Intl.NumberFormat('es-PE', { maximumFractionDigits: 2 });
+  $('tabla').innerHTML = filas.slice().sort((a, b) => b.valor - a.valor)
+    .map(f => `<tr data-id="${f.id}"><td>${f.nombre}</td><td class="num">${fmt.format(f.valor)}</td></tr>`)
+    .join('');
+}
+
+/* ── Eventos ──────────────────────────────────────────────────────────── */
+const soltar = $('soltar');
+$('archivo').addEventListener('change', e => e.target.files[0] && cargar(e.target.files[0]));
+['dragenter', 'dragover'].forEach(ev =>
+  soltar.addEventListener(ev, e => { e.preventDefault(); soltar.classList.add('encima'); }));
+['dragleave', 'drop'].forEach(ev =>
+  soltar.addEventListener(ev, e => { e.preventDefault(); soltar.classList.remove('encima'); }));
+soltar.addEventListener('drop', e => {
+  const f = e.dataTransfer.files[0];
+  if (f) cargar(f);
+});
+
+$('nivel').addEventListener('change', () => { poblarSelectores($('nivel').value); pintar(); });
+$('colId').addEventListener('change', pintar);
+$('colValor').addEventListener('change', pintar);
+$('paleta').addEventListener('change', pintar);
+$('otro').addEventListener('click', () => {
+  $('trabajo').classList.add('oculto');
+  $('zona').classList.remove('oculto');
+  $('archivo').value = '';
+});
+$('tabla').addEventListener('click', e => {
+  const tr = e.target.closest('tr[data-id]');
+  if (tr) { mapa.seleccionar(tr.dataset.id); mapa.zoomA(tr.dataset.id); }
+});
+</script>
+</body>
+</html>

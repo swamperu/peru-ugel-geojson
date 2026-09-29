@@ -1,0 +1,15 @@
+# Insumos pesados: se descargan del INEI, no se versionan
+*.gpkg
+distritos_inei.geojson
+
+# Archivos de trabajo
+todo.csv
+data/ugel-prueba.csv
+data/ugel-nuevos.csv
+*.tmp
+
+# Sistema
+.DS_Store
+Thumbs.db
+__pycache__/
+*.pyc

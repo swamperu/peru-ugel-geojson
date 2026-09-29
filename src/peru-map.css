@@ -1,0 +1,88 @@
+/* PeruMap — estilos base. Todo cuelga de .pm-root para no chocar con tu CSS. */
+
+.pm-root {
+  position: relative;
+  width: 100%;
+  font-family: inherit;
+  color: #1f2b33;
+}
+
+.pm-svg {
+  display: block;
+  width: 100%;
+  touch-action: none;
+  cursor: grab;
+}
+.pm-svg.pm-arrastrando { cursor: grabbing; }
+
+.pm-area {
+  stroke-width: 0.75;
+  transition: fill .25s ease, opacity .2s ease;
+}
+.pm-area:hover { stroke: #1f2b33; stroke-width: 1.5; }
+.pm-area.pm-seleccionado { stroke: #1f2b33; stroke-width: 2; }
+.pm-area.pm-atenuado { opacity: .35; }
+
+/* Etiquetas: tamaño fijo en pantalla (la contra-escala la hace el JS).
+   Ajusta aquí color, peso y halo; el tamaño va en la opción tamanoEtiqueta. */
+.pm-etiquetas {
+  pointer-events: none;
+}
+.pm-etiquetas text {
+  font-weight: 500;
+  fill: #2c3d47;
+  letter-spacing: .01em;
+  paint-order: stroke;
+  stroke: rgba(255, 255, 255, .9);
+  stroke-width: 3px;
+  stroke-linejoin: round;
+}
+
+.pm-tooltip {
+  position: absolute;
+  z-index: 10;
+  pointer-events: none;
+  min-width: 120px;
+  padding: 8px 10px;
+  border-radius: 6px;
+  background: #16232b;
+  color: #f4f7f8;
+  font-size: 12.5px;
+  line-height: 1.45;
+  box-shadow: 0 6px 20px rgba(15, 30, 40, .28);
+}
+.pm-tooltip strong { display: block; font-size: 13px; margin-bottom: 2px; }
+.pm-tooltip span { color: #a8bcc7; }
+.pm-tooltip b { color: #fff; font-variant-numeric: tabular-nums; }
+
+.pm-leyenda {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 14px;
+  margin-top: 10px;
+  font-size: 12px;
+  color: #4a5a64;
+}
+.pm-leyenda-titulo { font-weight: 600; color: #1f2b33; margin-right: 4px; }
+.pm-leyenda-item { display: inline-flex; align-items: center; gap: 6px; }
+.pm-leyenda-item i {
+  width: 14px; height: 14px; border-radius: 3px;
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .07);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pm-area, .pm-etiquetas, .pm-root * { transition: none !important; }
+}
+
+.pm-contorno {
+  pointer-events: none;
+  transition: transform .45s cubic-bezier(.4, 0, .2, 1);
+}
+.pm-contorno path {
+  fill: none;
+  stroke: #16232b;
+  stroke-width: 1.1;
+  stroke-linejoin: round;
+  opacity: .55;
+}
