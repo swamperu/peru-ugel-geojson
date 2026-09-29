@@ -51,6 +51,17 @@ código los convierte a número, la mitad del mapa va a quedar sin datos.
 }
 ```
 
+| Campo | Qué es |
+|---|---|
+| `codigo` | Código oficial de la UGEL según ESCALE, 6 dígitos **como texto** (conserva el cero inicial). Es la clave para unir tus datos. |
+| `nombre` | Nombre oficial de la UGEL. |
+| `region` | Código de región de 2 dígitos. Si la UGEL cruza el límite regional, es la región mayoritaria entre sus distritos. |
+| `distritos` | Cuántos distritos se disolvieron para formar este polígono. |
+| `pendiente` | Indicador de procedencia: `true` señala un polígono que es **relleno provincial**, porque esa jurisdicción aún no está resuelta y no debe tomarse como buena. En este dataset las 226 están en `false`. Puede volverse `true` si regeneras las capas con un mapeo distrito → UGEL incompleto, por ejemplo tras actualizar la capa del INEI y quedar distritos nuevos sin asignar. |
+
+Para saber *cómo* se construyó cada polígono —no solo si es fiable, sino por qué método— está la
+columna `geometria` de [`data/ugel-catalogo.csv`](data/ugel-catalogo.csv), explicada más abajo.
+
 ### Uso directo, sin descargar nada
 
 ```js
