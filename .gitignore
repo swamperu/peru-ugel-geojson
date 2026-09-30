@@ -13,3 +13,8 @@ data/ugel-nuevos.csv
 Thumbs.db
 __pycache__/
 *.pyc
+
+# Node: solo se usa para generar los .topojson, no es parte del proyecto
+node_modules/
+package.json
+package-lock.json
