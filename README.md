@@ -98,6 +98,60 @@ columna amarilla y la arrastras a la página.
 
 ---
 
+## Usarlo en Power BI
+
+El visual **Shape Map** (Mapa de formas) acepta mapas personalizados. En `data/` están las tres
+capas ya convertidas a TopoJSON, que es el formato que Microsoft recomienda por tamaño:
+
+| Archivo | Contenido | Peso |
+|---|---|---|
+| `data/peru-ugel.topojson` | 226 UGEL | 223 KB |
+| `data/peru-regiones.topojson` | 25 regiones | 87 KB |
+| `data/peru-distritos.topojson` | 1 890 distritos | 700 KB |
+
+### Pasos
+
+1. En Power BI Desktop, inserta el visual **Shape Map** / *Mapa de formas*.
+2. Arrastra a **Location** / *Ubicación* la columna que identifica la UGEL, y tu medida a
+   **Color saturation** / *Saturación de color*.
+3. En el panel de formato: **Shape** / *Forma* → **Add map** / *Agregar mapa*, y sube el
+   `.topojson`. También puedes pegar la URL en vez de descargar el archivo:
+
+   ```
+   https://swamperu.github.io/peru-ugel-geojson/data/peru-ugel.topojson
+   ```
+
+4. Usa **View map type key** para ver con qué valores hace match el mapa. Las claves
+   disponibles son `codigo` y `nombre`.
+
+### El cero a la izquierda: esto es lo que te va a fallar
+
+El código de UGEL tiene 6 dígitos y **empieza en cero para 96 de las 226**: Amazonas es
+`010001`, no `10001`. Power Query detecta esa columna como número y se come el cero, y a
+partir de ahí ninguna de esas 96 hace match: salen en blanco en el mapa.
+
+Para evitarlo, en el Editor de Power Query marca esa columna como **Texto** antes de cargar:
+`Transformar` → `Tipo de datos` → `Texto`, y en el diálogo elige **Reemplazar la conversión
+actual** (no "Agregar nuevo paso", que deja la conversión numérica antes).
+
+Si el daño ya está hecho, esta columna calculada lo repara:
+
+```
+CodigoUGEL = RIGHT("000000" & [tu_columna], 6)
+```
+
+Si tus datos traen el **nombre** de la UGEL en vez del código, usa `nombre` como clave. Ojo
+con que coincida exactamente, incluidas tildes: el mapa usa los nombres oficiales de ESCALE,
+que están en `data/ugel-catalogo.csv` para que los compares.
+
+### Limitación del visual
+
+Shape Map dibuja hasta 1 500 elementos, así que las 226 UGEL y los 1 890 distritos entran sin
+problema. Si necesitas mapas base, zoom o capas encima, el Shape Map no los tiene: para eso
+está la librería de este repo o un visual como Icon Map.
+
+---
+
 ## La librería
 
 `src/peru-map.js` dibuja estos polígonos como mapa coroplético. Sin dependencias: ni D3, ni
