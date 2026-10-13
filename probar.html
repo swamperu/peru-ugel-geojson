@@ -163,7 +163,11 @@ function indices(nivel) {
     for (const [cod, a] of Object.entries(escale.ugel)) {
       porCodigo.set(cod, { cod, nombre: a.nombre });
       const k = clave(a.nombre);
-      if (!porNombre.has(k)) porNombre.set(k, { cod, nombre: a.nombre });
+      // Dos UGEL pueden llamarse igual: hay una "UGEL LA UNION" en Piura y otra en
+      // Arequipa. La clave se marca ambigua en vez de quedarse con la primera en
+      // silencio, porque eso dejaba una UGEL sin pintar sin que nadie se enterara.
+      if (porNombre.has(k)) porNombre.set(k, { ambiguo: true, nombre: a.nombre });
+      else porNombre.set(k, { cod, nombre: a.nombre });
     }
   } else {
     for (const f of geoReg.features) {
@@ -320,7 +324,7 @@ async function pintar() {
   const cuerpo = datos.slice(1);
 
   const porCod = new Map();
-  const sinCruce = [], sinValor = [];
+  const sinCruce = [], sinValor = [], ambiguas = [];
   let porNombreUsado = 0;
 
   for (const f of cuerpo) {
@@ -328,7 +332,11 @@ async function pintar() {
     if (!bruto) continue;
     const soloDig = bruto.replace(/\D/g, '');
     let hit = soloDig ? porCodigo.get(soloDig.padStart(largo, '0')) : null;
-    if (!hit) { hit = porNombre.get(clave(bruto)); if (hit) porNombreUsado++; }
+    if (!hit) {
+      const porNom = porNombre.get(clave(bruto));
+      if (porNom?.ambiguo) { ambiguas.push(bruto); continue; }
+      if (porNom) { hit = porNom; porNombreUsado++; }
+    }
     if (!hit) { sinCruce.push(bruto); continue; }
 
     const v = Number(String(f[colValor] ?? '').replace(/\s|,/g, ''));
@@ -348,6 +356,12 @@ async function pintar() {
   const notas = [];
   if (porNombreUsado) notas.push(`${porNombreUsado} filas se cruzaron por nombre, no por código.`);
   if (sinValor.length) notas.push(`${sinValor.length} filas cruzaron pero no traían un número en la columna de valor.`);
+  if (ambiguas.length) {
+    const cuales = [...new Set(ambiguas)].slice(0, 4).join(' · ');
+    notas.push(`${ambiguas.length} filas quedaron sin pintar porque su nombre corresponde a ` +
+               `más de una UGEL (${cuales}). Usa la columna de <strong>código</strong> para ` +
+               `distinguirlas: hay nombres repetidos en regiones distintas.`);
+  }
   if (sinCruce.length) {
     const muestra = [...new Set(sinCruce)].slice(0, 6).join(' · ');
     notas.push(`${sinCruce.length} filas no se reconocieron: ${muestra}${sinCruce.length > 6 ? ' …' : ''}`);
