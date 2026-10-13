@@ -30,6 +30,7 @@
   button { cursor:pointer; }
   button:hover { border-color:#42a09d; }
   button.link { border:none; background:none; color:#2d817e; text-decoration:underline; padding:0; font-size:12.5px; }
+  .descargas { display:flex; gap:10px; align-items:center; }
 
   .cruce { font-size:13px; padding:10px 13px; border-radius:7px; margin-bottom:16px; line-height:1.6; }
   .cruce.ok { background:#eef7f6; border:1px solid #cfe6e4; color:#1f5b58; }
@@ -97,6 +98,14 @@
           <option value="ambar">Ámbar</option>
           <option value="brecha">Divergente (para brechas)</option>
         </select>
+      </div>
+      <div class="campo">
+        <label>Llevarlo a Excel o Word</label>
+        <div class="descargas">
+          <button id="png">Descargar imagen</button>
+          <button id="svg" class="link">SVG</button>
+          <button id="copiar" class="link">Copiar</button>
+        </div>
       </div>
       <button id="otro" class="link">Usar otro archivo</button>
     </div>
@@ -389,6 +398,45 @@ $('otro').addEventListener('click', () => {
   $('zona').classList.remove('oculto');
   $('archivo').value = '';
 });
+/* ── Llevar el mapa a Excel o Word ────────────────────────────────────── */
+function nombreSalida(ext) {
+  const metrica = String(datos?.[0]?.[Number($('colValor').value)] || 'valor')
+    .toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+  return `mapa-ugel-${metrica || 'valor'}.${ext}`;
+}
+
+function bajar(blob, nombre) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = nombre;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+// escala 2: al pegarlo en Excel se ve nitido aunque lo amplien
+$('png').addEventListener('click', async () => {
+  bajar(await mapa.exportarPNG({ escala: 2 }), nombreSalida('png'));
+});
+
+$('svg').addEventListener('click', () => {
+  bajar(new Blob([mapa.exportarSVG()], { type: 'image/svg+xml' }), nombreSalida('svg'));
+});
+
+$('copiar').addEventListener('click', async e => {
+  const boton = e.target;
+  try {
+    // Pegar directo en Excel, sin pasar por un archivo intermedio.
+    await navigator.clipboard.write([
+      new ClipboardItem({ 'image/png': mapa.exportarPNG({ escala: 2 }) }),
+    ]);
+    boton.textContent = 'Copiado';
+  } catch {
+    boton.textContent = 'Tu navegador no deja copiar — usa Descargar';
+  }
+  setTimeout(() => { boton.textContent = 'Copiar'; }, 2500);
+});
+
 $('tabla').addEventListener('click', e => {
   const tr = e.target.closest('tr[data-id]');
   if (tr) { mapa.seleccionar(tr.dataset.id); mapa.zoomA(tr.dataset.id); }

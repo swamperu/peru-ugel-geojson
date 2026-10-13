@@ -239,9 +239,66 @@ export class PeruMap {
     return this;
   }
 
-  /** Devuelve el SVG como string (para exportar o incrustar en un PDF). */
-  exportarSVG() {
-    return new XMLSerializer().serializeToString(this.svg);
+  /**
+   * Devuelve el SVG como string, listo para abrir o incrustar en otro documento.
+   * Los estilos van embebidos y el fondo es sólido: el CSS externo no viaja con el
+   * archivo, y sin fondo el mapa queda transparente al pegarlo en Excel o Word.
+   * @param {{fondo?:string, escala?:number}} opciones
+   */
+  exportarSVG({ fondo = '#ffffff', escala = 1 } = {}) {
+    const copia = this.svg.cloneNode(true);
+    const w = this.ancho * escala, h = this.alto * escala;
+    // xmlns no se pone a mano: XMLSerializer lo deriva del namespace del nodo,
+    // y el atributo literal saldría duplicado (XML inválido para parsers estrictos).
+    copia.setAttribute('width', w);
+    copia.setAttribute('height', h);
+    copia.setAttribute('viewBox', `0 0 ${this.ancho} ${this.alto}`);
+
+    const estilo = document.createElementNS(SVG_NS, 'style');
+    estilo.textContent = `
+      .pm-area { stroke: ${COLOR_BORDE}; stroke-width: .75; }
+      .pm-contorno path { fill: none; stroke: #16232b; stroke-width: 1.1; opacity: .55; }
+      .pm-etiquetas text { font-family: "Segoe UI", system-ui, sans-serif;
+        font-size: ${this.opts.tamanoEtiqueta}px; font-weight: 500; fill: #2c3d47;
+        paint-order: stroke; stroke: rgba(255,255,255,.9); stroke-width: 3px;
+        stroke-linejoin: round; }`;
+    copia.insertBefore(estilo, copia.firstChild);
+
+    if (fondo) {
+      const rect = document.createElementNS(SVG_NS, 'rect');
+      rect.setAttribute('width', '100%');
+      rect.setAttribute('height', '100%');
+      rect.setAttribute('fill', fondo);
+      copia.insertBefore(rect, estilo.nextSibling);
+    }
+    return '<?xml version="1.0" encoding="UTF-8"?>\n' +
+           new XMLSerializer().serializeToString(copia);
+  }
+
+  /**
+   * Rasteriza el mapa a PNG y devuelve un Blob, para descargarlo o pegarlo.
+   * @param {{escala?:number, fondo?:string}} opciones escala 2 = el doble de resolución
+   * @returns {Promise<Blob>}
+   */
+  exportarPNG({ escala = 2, fondo = '#ffffff' } = {}) {
+    const svg = this.exportarSVG({ fondo });
+    const url = URL.createObjectURL(new Blob([svg], { type: 'image/svg+xml;charset=utf-8' }));
+    return new Promise((resolver, rechazar) => {
+      const img = new Image();
+      img.onload = () => {
+        const lienzo = document.createElement('canvas');
+        lienzo.width = this.ancho * escala;
+        lienzo.height = this.alto * escala;
+        const ctx = lienzo.getContext('2d');
+        ctx.fillStyle = fondo;
+        ctx.fillRect(0, 0, lienzo.width, lienzo.height);
+        ctx.drawImage(img, 0, 0, lienzo.width, lienzo.height);
+        URL.revokeObjectURL(url);
+        lienzo.toBlob(b => b ? resolver(b) : rechazar(new Error('No se pudo generar el PNG')), 'image/png');
+      };
+      img.onerror = () => { URL.revokeObjectURL(url); rechazar(new Error('No se pudo leer el SVG')); };
+      img.src = url;
+    });
   }
 
   destruir() {
@@ -257,7 +314,6 @@ export class PeruMap {
 
     this.svg = document.createElementNS(SVG_NS, 'svg');
     this.svg.setAttribute('class', 'pm-svg');
-    this.svg.setAttribute('xmlns', SVG_NS);
     this.capa = document.createElementNS(SVG_NS, 'g');
     this.capaContorno = document.createElementNS(SVG_NS, 'g');
     this.capaContorno.setAttribute('class', 'pm-contorno');

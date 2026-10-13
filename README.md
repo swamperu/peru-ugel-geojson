@@ -98,6 +98,35 @@ columna amarilla y la arrastras a la página.
 
 ---
 
+## Usarlo en Excel
+
+**La librería no corre dentro de Excel**: es JavaScript de navegador. Y el gráfico de **Mapa**
+de Excel solo reconoce geografías que Bing ya tiene cargadas —países, departamentos,
+ciudades—, sin ninguna forma de subirle un mapa propio. Las UGEL no existen en ese catálogo,
+así que por ahí no hay camino.
+
+Lo que sí funciona, y a la mayoría le alcanza:
+
+### Llevar el mapa a tu hoja como imagen
+
+1. Abre la [página de carga](https://swamperu.github.io/peru-ugel-geojson/probar.html).
+2. Arrastra tu Excel o CSV. El mapa se pinta con tus cifras.
+3. Usa uno de los tres botones:
+   - **Copiar** — y pegas directo en la hoja con `Ctrl+V`, sin archivos de por medio.
+   - **Descargar imagen** — PNG al doble de resolución, nítido aunque lo amplíen en un informe.
+   - **SVG** — vectorial: se escala sin pixelarse y se puede editar en Illustrator o Inkscape.
+
+La imagen sale con fondo blanco y los estilos incrustados, así que se pega limpia en Excel,
+Word o PowerPoint.
+
+### Si necesitas que el mapa se actualice solo
+
+Una imagen es una foto: si cambian tus números, hay que volver a generarla. Excel no tiene
+forma de evitarlo con un mapa personalizado. Si lo que necesitas es un tablero que se refresque
+con los datos, el camino es Power BI, que sí acepta estos polígonos — ver la sección siguiente.
+
+---
+
 ## Usarlo en Power BI
 
 El visual **Shape Map** (Mapa de formas) acepta mapas personalizados. En `data/` están las tres
@@ -186,7 +215,8 @@ mapa.setDatos(filas, { campoId: 'id', campoValor: 'total' });
 | `setOpciones({...})` | Cambia paleta, escala o formato en caliente. |
 | `seleccionar(id)` / `limpiarSeleccion()` | Resalta y atenúa el resto. |
 | `zoomA(id)` / `resetZoom()` | Encuadre animado sobre un polígono. |
-| `exportarSVG()` | Devuelve el SVG como string. |
+| `exportarSVG({fondo, escala})` | Devuelve el SVG como string, con los estilos embebidos y fondo sólido. |
+| `exportarPNG({escala, fondo})` | Rasteriza el mapa y devuelve una `Promise<Blob>` lista para descargar o copiar. |
 
 Las etiquetas se dibujan en coordenadas de pantalla: **no crecen al hacer zoom**, y las que se
 encimarían o caen sobre un polígono muy chico se descartan, dando prioridad a los grandes.
